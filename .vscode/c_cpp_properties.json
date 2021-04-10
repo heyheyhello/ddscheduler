@@ -1,0 +1,27 @@
+{
+    "configurations": [
+        {
+            "name": "Linux",
+            "includePath": [
+                "${workspaceFolder}/src",
+                "${workspaceFolder}/Libraries/CMSIS/Include",
+                "${workspaceFolder}/Libraries/Device/STM32F4xx/Include",
+                "${workspaceFolder}/Libraries/STM32F4xx_StdPeriph_Driver/inc",
+                "${workspaceFolder}/Utilities/STM32F4-Discovery",
+                "${workspaceFolder}/FreeRTOS_Source/include",
+                "${workspaceFolder}/FreeRTOS_Source/portable/GCC/ARM_CM4F"
+            ],
+            "defines": [
+                "USE_STM32F4_DISCOVERY",
+                "HSE_VALUE=8000000",
+                "STM32F4XX",
+                "USE_STDPERIPH_DRIVER"
+            ],
+            "compilerPath": "/usr/bin/arm-linux-gnueabi-gcc",
+            "cStandard": "c99",
+            "cppStandard": "${default}",
+            "intelliSenseMode": "linux-gcc-arm"
+        }
+    ],
+    "version": 4
+}
