@@ -46,7 +46,6 @@ typedef struct DD_Task_t
 typedef struct DD_Message_t
 {
   DD_Message_Enum_t type;
-  TaskHandle_t sender;
   void *data;
 } DD_Message_t;
 

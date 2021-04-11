@@ -9,6 +9,12 @@ static DD_LL_Leader_t *active_list;
 static DD_LL_Leader_t *overdue_list;
 static DD_LL_Leader_t *complete_list;
 
+// Queues are pointer queues https://www.freertos.org/a00118.html
+// This means we can send any data since we're just sending addresses.
+
+// TODO: WAIT NO THEY'RE NOT... They're DD_Message_t. It's the ->data that's a
+// pointer... Need to fix the code then.
+
 // This is how API functions queue up work for the DDS to complete
 static QueueHandle_t *qh_request;
 // This is how the DDS returns work to the API functions
@@ -143,7 +149,6 @@ static DD_LL_Leader_t *get_dd_task_list(DD_LL_Leader_t *requested_list)
   // TODO: Oh no is this &requested_list? I don't do pointers.
   message->data = requested_list;
 
-  // Sending pointers in queues: https://www.freertos.org/a00118.html
   if (xQueueSend(qh_request, (void *)&message, portMAX_DELAY) != pdTRUE)
   {
     free(message);
