@@ -2,8 +2,11 @@
 
 #include "dd_headers.h"
 
-// From the lab manual
+// -----------------------------------------------------------------------------
+
 void create_dd_task(
+    // If they want us to accept a TaskHandle_t then I'm not calling xTaskCreate
+    // from in the DDS - the caller must have done xTaskCreate and xTaskSuspend
     TaskHandle_t task_handle,
     DD_Task_Enum_t type,
     // I assume we're told to accept an ID as a way to overwrite a task? I'll
@@ -11,17 +14,33 @@ void create_dd_task(
     uint32_t id,
     uint32_t absolute_deadline);
 
-// From the lab manual
+// From the lab manual. Still, I worry accepting a task handle is bad API design
+// since it's too easy for callers to hand either a running or suspended task.
+// I'll have to suspend either way, and this also wastes time on the FreeRTOS
+// scheduler. I think xTaskFunction would be better.
+
+// -----------------------------------------------------------------------------
+
 void delete_dd_task(uint32_t id);
 
-// Modified from the lab manual. The recommended type signature is to return a
-// double indirect pointer to the address of the start of the list, but I'm not
-// enough of a C wizard to practice such pointer magic. Instead, dedicated list
-// metadata structs are passed around. I argue this improves maintainability and
-// accessibility of the code.
+// From the lab manual. No comment.
 
-// Wait No? This doesn't make sense as an API. The API calls are async so how am
-// I supposed to return a pointer - it'll be NULL until the promise resolves.
+// -----------------------------------------------------------------------------
+
+DD_LL_Leader_t *get_active_dd_task_list(void);
+DD_LL_Leader_t *get_overdue_dd_task_list(void);
+DD_LL_Leader_t *get_complete_dd_task_list(void);
+
+// These aren't from the lab manual. The recommended type signature is to return
+// a double indirect pointer to the address of the start of the list, but I'm
+// not enough of a C wizard to practice that pointer magic. Instead, I pass
+// dedicated list metadata structs around. This is easier to understand.
+
+// Notes:
+
+// First looking at this, it doesn't make sense as an API since the calls are
+// async so how am I supposed to return a pointer? It'd be NULL until the
+// promise resolves.
 
 // Either a) the DDS will need to have an outbox queue, and a caller will need
 // to poll that queue (or add itself to the queue) before calling the API or b)
@@ -38,9 +57,5 @@ void delete_dd_task(uint32_t id);
 // yields and get_*_dd resumes (as part of the caller F-Task), reads its queue,
 // resolves the pointer, and gives it back to the caller.
 
-// OK. Needed to realize that this isn't an event loop microtask queue
-// architecture haha
-
-DD_LL_Leader_t *get_active_dd_task_list(void);
-DD_LL_Leader_t *get_overdue_dd_task_list(void);
-DD_LL_Leader_t *get_complete_dd_task_list(void);
+// OK... Needed to realize that this isn't an event loop microtask queue
+// architecture; all good.
