@@ -54,7 +54,8 @@ void DD_Scheduler_Task(void *pvParameters)
       // require two passes; one to insert and one to adjust all the priorities
       // of tasks based on where it was put in the list.
 
-      if (xQueueSend(qh_response, NULL, portMAX_DELAY) == pdFALSE)
+      // Return address of the DD_Task_t
+      if (xQueueSend(qh_response, &task, portMAX_DELAY) == pdFALSE)
         printf("DDS error responding to DD_API_Message_Task_Create\n");
       break;
 
@@ -91,7 +92,7 @@ void DD_Scheduler_Task(void *pvParameters)
           vTaskPrioritySet(t->task_handle, --top_priority);
         }
       }
-      // I'll return the address of the DD_Task_t? Sure why not. Default NULL.
+      // Return address of the DD_Task_t (or NULL if not found)
       if (xQueueSend(qh_response, &t_removed, portMAX_DELAY) == pdFALSE)
         printf("DDS error responding to DD_API_Message_Task_Delete\n");
       break;
@@ -124,7 +125,13 @@ void create_dd_task(
     uint32_t id,
     uint32_t absolute_deadline){};
 
-void delete_dd_task(uint32_t id){};
+void delete_dd_task(uint32_t id)
+{
+  // TODO: Send a message containing a pointer to an integer (or real int???)
+  // TODO: Receive a message containing a pointer to DD_Task_t
+  // TODO: Free the task and task handle
+  return;
+};
 
 static DD_LL_Leader_t *get_dd_task_list(DD_LL_Leader_t *requested_list)
 {
