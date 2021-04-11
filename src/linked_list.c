@@ -6,7 +6,10 @@ DD_LL_Leader_t *ll_leader()
 {
   DD_LL_Leader_t *leader = (DD_LL_Leader_t *)malloc(sizeof(DD_LL_Leader_t));
   if (!leader)
+  {
     printf("Error trying to malloc in ll_leader");
+    return NULL;
+  }
 
   leader->head = NULL;
   leader->cursor = NULL;
@@ -19,7 +22,10 @@ DD_LL_Node_t *ll_node(DD_Task_t *dd_task)
 {
   DD_LL_Node_t *item = (DD_LL_Node_t *)malloc(sizeof(DD_LL_Node_t));
   if (!item)
+  {
     printf("Error trying to malloc in ll_node");
+    return NULL;
+  }
 
   item->task = dd_task;
   item->next = NULL;
