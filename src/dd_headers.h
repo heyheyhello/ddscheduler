@@ -30,24 +30,8 @@ typedef enum DD_Message_Enum_t
 {
   DD_API_Message_Task_Create,
   DD_API_Message_Task_Delete,
-  DD_API_Message_List_Active,
-  DD_API_Message_List_Overdue,
-  DD_API_Message_List_Completed
+  DD_API_Message_Fetch_Task_List,
 } DD_Message_Enum_t;
-
-typedef struct DD_LL_Leader_t
-{
-  DD_LL_Node_t *head;
-  DD_LL_Node_t *cursor;
-  DD_LL_Node_t *cursor_prev;
-  unsigned int length;
-} DD_LL_Leader_t;
-
-typedef struct DD_LL_Node_t
-{
-  DD_Task_t *task;
-  struct DD_LL_Node_t *next;
-} DD_LL_Node_t;
 
 typedef struct DD_Task_t
 {
@@ -65,5 +49,30 @@ typedef struct DD_Message_t
   TaskHandle_t sender;
   void *data;
 } DD_Message_t;
+
+// Linked list implementation
+
+typedef struct DD_LL_Leader_t
+{
+  DD_LL_Node_t *head;
+  DD_LL_Node_t *cursor;
+  DD_LL_Node_t *cursor_prev;
+  unsigned int length;
+} DD_LL_Leader_t;
+
+typedef struct DD_LL_Node_t
+{
+  DD_Task_t *task;
+  struct DD_LL_Node_t *next;
+} DD_LL_Node_t;
+
+DD_LL_Leader_t *ll();
+DD_LL_Node_t *ll_node(DD_Task_t *dd_task);
+void ll_next(DD_LL_Leader_t *leader);
+void ll_cursor_prepend(DD_LL_Leader_t *leader, DD_LL_Node_t *to_add);
+void ll_cursor_append(DD_LL_Leader_t *leader, DD_LL_Node_t *to_add);
+DD_LL_Node_t *ll_cursor_unlink(DD_LL_Leader_t *leader);
+void ll_print(DD_LL_Leader_t *leader);
+void ll_empty(DD_LL_Leader_t *leader);
 
 #endif
