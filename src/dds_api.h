@@ -10,7 +10,9 @@ void create_dd_task(
     TaskHandle_t task_handle,
     DD_Task_Enum_t type,
     // I assume we're told to accept an ID as a way to overwrite a task? I'll
-    // try to make this reuse memory, otherwise simply delete/re-create.
+    // try to make this reuse memory, otherwise simply delete/re-create. Is this
+    // to see if we're overdue for periodic tasks? High absolute deadlines would
+    // allow multiple of the same ID to be scheduled, so, error?
     uint32_t id,
     uint32_t absolute_deadline);
 
