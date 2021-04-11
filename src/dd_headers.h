@@ -28,11 +28,11 @@ typedef enum DD_Task_Enum_t
 
 typedef enum DD_Message_Enum_t
 {
-  DD_Message_Task_Create,
-  DD_Message_Task_Delete,
-  DD_Message_Fetch_Task_List_Active,
-  DD_Message_Fetch_Task_List_Overdue,
-  DD_Message_Fetch_Task_List_Completed
+  DD_API_Message_Task_Create,
+  DD_API_Message_Task_Delete,
+  DD_API_Message_List_Active,
+  DD_API_Message_List_Overdue,
+  DD_API_Message_List_Completed
 } DD_Message_Enum_t;
 
 typedef struct DD_LL_Leader_t
