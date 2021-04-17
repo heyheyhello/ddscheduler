@@ -20,12 +20,9 @@ static QueueHandle_t *qh_request;
 // This is how the DDS returns work to the API functions
 static QueueHandle_t *qh_response;
 
-void DD_Scheduler_Task(void *pvParameters)
-{
-  DD_Message_t *incoming_message;
-  while (1)
-  {
-    if (xQueueReceive(qh_request, &incoming_message, portMAX_DELAY) == pdFALSE)
+  DD_Message_t *req_message;
+  while (1) {
+    if (xQueueReceive(qh_request, &req_message, portMAX_DELAY) == pdFALSE)
       // No incoming messages but timeout expired. That's fine, loop again...
       continue;
 
@@ -62,24 +59,24 @@ void DD_Scheduler_Task(void *pvParameters)
       ll_cur_append(ll_overdue, node_active);
       printf("DDS moved %d from active list to overdue list\n", t->id);
     }
+    // Memory is shared, don't allocate a new message
+    DD_Message_t *res_message = req_message;
     // Back to processing that incoming message
-    switch (incoming_message->type)
-    {
-    case (DD_API_Message_Task_Create):
-      DD_Task_t *task = (DD_Task_t *)incoming_message->data;
+    switch (req_message->type) {
+    case (DD_API_Req_Task_Create):
+      DD_Task_t *task = (DD_Task_t *)req_message->data;
 
       // TODO: Walk the LL active list and put it in the right spot. This will
       // require two passes; one to insert and one to adjust all the priorities
       // of tasks based on where it was put in the list.
 
       // Return address of the DD_Task_t
-      if (xQueueSend(qh_response, &task, portMAX_DELAY) == pdFALSE)
-        printf("DDS error responding to DD_API_Message_Task_Create\n");
+      res_message->data = task;
       break;
 
-    case (DD_API_Message_Task_Delete):
+    case (DD_API_Req_Task_Delete):
       // Hate pointers but I want to keep the queue as a generic pointer queue.
-      uint32_t *task_id_pointer = (void *)&incoming_message->data;
+      uint32_t *task_id_pointer = (void *)&req_message->data;
       uint32_t task_id = *task_id_pointer;
 
       ll_active->cursor = ll_active->head;
@@ -111,29 +108,29 @@ void DD_Scheduler_Task(void *pvParameters)
         }
       }
       // Return address of the DD_Task_t (or NULL if not found)
-      if (xQueueSend(qh_response, &t_removed, portMAX_DELAY) == pdFALSE)
-        printf("DDS error responding to DD_API_Message_Task_Delete\n");
+      res_message->data = t_removed;
       break;
 
-    case (DD_API_Message_Fetch_Task_List):
-      DD_LL_Leader_t *list_to_return = (DD_LL_Leader_t *)incoming_message->data;
+    case (DD_API_Req_Fetch_Task_List):
+      DD_LL_Leader_t *list_to_return = (DD_LL_Leader_t *)req_message->data;
       // If I was going to modify the list, make a copy, redact things, etc, I'd
       // do that here and return a pointer to a new list. I'm not doing that
-      // though, since all the code so far is trusted to not free() things that
+      // though, since all the code so far is trusted to not free things that
       // aren't theirs. This is a performance tradeoff.
 
-      // DEBUG:
-      if (list_to_return == active_list)
-        printf("DDS returning active_list\n");
-      if (list_to_return == overdue_list)
-        printf("DDS returning overdue_list\n");
-      if (list_to_return == complete_list)
-        printf("DDS returning complete_list\n");
+      if (list_to_return == ll_active)
+        printf("DDS ll_active\n");
+      if (list_to_return == ll_overdue)
+        printf("DDS ll_overdue\n");
+      if (list_to_return == ll_complete)
+        printf("DDS ll_complete\n");
 
-      if (xQueueSend(qh_response, &list_to_return, portMAX_DELAY) == pdFALSE)
-        printf("DDS error responding to DD_API_Message_Fetch_Task_List\n");
+      res_message->data = list_to_return;
       break;
     }
+    res_message->type = DD_API_Res_OK;
+    if (xQueueSend(qh_response, &res_message, portMAX_DELAY) == pdFALSE)
+      printf("DDS error responding to DD_API enum %d\n", req_message->type);
   }
 }
 
