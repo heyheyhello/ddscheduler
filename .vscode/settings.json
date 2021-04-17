@@ -1,6 +1,8 @@
 {
   "files.associations": {
     "*.json": "jsonc",
-    "*.h": "c"
-  }
+    "*.h": "c",
+    "*.url": "c"
+  },
+  "C_Cpp.clang_format_fallbackStyle": "LLVM"
 }
