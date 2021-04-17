@@ -2,22 +2,7 @@
 
 #include "dd_headers.h"
 
-// From our PDF doc. Everything is on GPIOC.
-// Red/Amber/Green
-#define TRAFFIC_LIGHT_R GPIO_Pin_0
-#define TRAFFIC_LIGHT_A GPIO_Pin_1
-#define TRAFFIC_LIGHT_G GPIO_Pin_2
-
 static void prvSetupHardware(void);
-
-/*
- * The queue send and receive tasks as described in the comments at the top of
- * this file.
- */
-static void Manager_Traffic_LED_Task(void *pvParameters);
-static void Red_Traffic_LED_Controller_Task(void *pvParameters);
-static void Amber_Traffic_LED_Controller_Task(void *pvParameters);
-static void Green_Traffic_LED_Controller_Task(void *pvParameters);
 
 int main(void)
 {
@@ -26,109 +11,16 @@ int main(void)
 
   prvSetupHardware();
 
+  // TODO: Priorities
+  xTaskCreate(DD_Scheduler_Task, "DD Scheduler Task", configMINIMAL_STACK_SIZE, NULL, 5, NULL);
+  xTaskCreate(DD_Monitor_Task, "DD Monitor Task", configMINIMAL_STACK_SIZE, NULL, 5, NULL);
+
+  // xTaskCreate(Periodic_Generator_1, "Periodic_Test_1", configMINIMAL_STACK_SIZE, NULL, 2, NULL);
+  // xTaskCreate(Periodic_Generator_2, "Periodic_Test_2", configMINIMAL_STACK_SIZE, NULL, 2, NULL);
+  // xTaskCreate(Periodic_Generator_3, "Periodic_Test_3", configMINIMAL_STACK_SIZE, NULL, 2, NULL);
+
   vTaskStartScheduler();
   return 0;
-}
-
-static void Manager_Traffic_LED_Task(void *pvParameters)
-{
-  uint16_t LEDS[] = {TRAFFIC_LIGHT_R, TRAFFIC_LIGHT_A, TRAFFIC_LIGHT_G};
-  int i = 0;
-  while (1)
-  {
-    uint16_t led = LEDS[i];
-    printf("Manager: LED ON %u\n", led);
-    GPIO_SetBits(GPIOC, led);
-    if (xQueueSend(xQueue_handle, &led, 1000))
-    {
-      printf("Manager xQueueSend ok\n");
-      i++;
-      if (i >= 3)
-      {
-        i = 0;
-      }
-      vTaskDelay(1000);
-    }
-    else
-    {
-      printf("Manager xQueueSend error\n");
-    }
-  }
-}
-
-static void Red_Traffic_LED_Controller_Task(void *pvParameters)
-{
-  uint16_t rx_data;
-  while (1)
-  {
-    if (xQueueReceive(xQueue_handle, &rx_data, 500))
-    {
-      if (rx_data == TRAFFIC_LIGHT_R)
-      {
-        vTaskDelay(250);
-        GPIO_ResetBits(GPIOC, TRAFFIC_LIGHT_R);
-        printf("Red off\n");
-      }
-      else
-      {
-        if (xQueueSend(xQueue_handle, &rx_data, 1000))
-        {
-          printf("RedTask GRP (%u).\n", rx_data); // Got wrong Package
-          vTaskDelay(500);
-        }
-      }
-    }
-  }
-}
-
-static void Amber_Traffic_LED_Controller_Task(void *pvParameters)
-{
-  uint16_t rx_data;
-  while (1)
-  {
-    if (xQueueReceive(xQueue_handle, &rx_data, 500))
-    {
-      if (rx_data == TRAFFIC_LIGHT_A)
-      {
-        vTaskDelay(250);
-        GPIO_ResetBits(GPIOC, TRAFFIC_LIGHT_A);
-        printf("Amber off\n");
-      }
-      else
-      {
-        if (xQueueSend(xQueue_handle, &rx_data, 1000))
-        {
-          printf("AmberTask GRP (%u).\n", rx_data); // Got wrong Package
-          vTaskDelay(500);
-        }
-      }
-    }
-  }
-}
-
-static void Green_Traffic_LED_Controller_Task(void *pvParameters)
-{
-  uint16_t rx_data;
-  while (1)
-  {
-    if (xQueueReceive(xQueue_handle, &rx_data, 500))
-    {
-      if (rx_data == TRAFFIC_LIGHT_G)
-      {
-        vTaskDelay(250);
-        GPIO_ResetBits(GPIOC, TRAFFIC_LIGHT_G);
-        printf("Green off\n");
-      }
-      else
-      {
-        if (xQueueSend(xQueue_handle, &rx_data, 1000))
-        {
-          printf("GreenTask GRP (%u).\n", rx_data); // Got wrong Package
-          vTaskDelay(500);
-        }
-      }
-    }
-  }
 }
 
 void vApplicationMallocFailedHook(void)
