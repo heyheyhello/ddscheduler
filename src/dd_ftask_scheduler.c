@@ -30,13 +30,10 @@ static QueueHandle_t *qh_response;
     // implement software timers since the monitor task is the only one reading
     // overdue tasks, and it will send us a message, which calls this overdue
     // check. This way the work is only performed on an as needed basis.
-    DD_LL_Leader_t *ll_active = &active_list;
     TickType_t time_now = xTaskGetTickCount();
-    for (ll_active->cursor = ll_active->head; ll_active->cursor; ll_next(ll_active))
-    {
+    for (ll_cur_head(ll_active); ll_active->cursor; ll_cur_next(ll_active)) {
       DD_Task_t *t = ll_active->cursor->task;
-      if (time_now < t->absolute_deadline)
-      {
+      if (time_now < t->absolute_deadline) {
         // Not overdue. Also! Because this list is sorted as EDF all elements
         // after this will also be not overdue, so break.
         break;
@@ -79,33 +76,43 @@ static QueueHandle_t *qh_response;
       uint32_t *task_id_pointer = (void *)&req_message->data;
       uint32_t task_id = *task_id_pointer;
 
-      ll_active->cursor = ll_active->head;
+      ll_cur_head(ll_active);
       DD_Task_t *t = ll_active->cursor->task;
       DD_Task_t *t_removed = NULL;
       uint32_t top_priority = uxTaskPriorityGet(t->task_handle);
-      for (; ll_active->cursor; ll_next(ll_active))
-      {
+      for (; ll_active->cursor; ll_cur_next(ll_active)) {
         t = ll_active->cursor->task;
-        if (t->id == task_id)
-        {
-          t_removed = t;
-          DD_LL_Node_t *node = ll_cursor_unlink(ll_active);
-          free(node);
-          printf("DDS removed task %d from active list", task_id);
-          break;
+        if (t->id != task_id)
+          continue;
+        t_removed = t;
+        DD_LL_Node_t *node_active = ll_cur_unlink(ll_active);
+        ll_cur_head(ll_complete);
+        // Too full? Remove head of list
+        while (ll_complete->length > 10) {
+          print("DDS complete list > 10 items removing head\n");
+          DD_LL_Node_t *node_complete = ll_cur_unlink(ll_complete);
+          // Complete tasks have already had their F-Task cleaned up not D-Task
+          vPortFree(node_complete->task);
+          ll_cur_head(ll_complete);
         }
+        ll_cur_tail(ll_complete);
+        // Move to end of complete list
+        ll_cur_append(ll_complete, node_active);
+        printf("DDS moved %d from active list to complete list\n", task_id);
+        break;
       }
+      // TODO: Diagram this on paper to make sure I understand...
       // If there was a task to remove, then decrement the priorities before it
-      if (t_removed != NULL)
-      {
-        ll_active->cursor = ll_active->head;
-        for (; ll_active->cursor; ll_next(ll_active))
-        {
+      if (t_removed != NULL) {
+        for (ll_cur_head(ll_active); ll_active->cursor;
+             ll_cur_next(ll_active)) {
           t = ll_active->cursor->task;
           if (t->id == task_id)
             break;
           vTaskPrioritySet(t->task_handle, --top_priority);
         }
+      } else {
+        print("DDS task not in active list %d\n", task_id);
       }
       // Return address of the DD_Task_t (or NULL if not found)
       res_message->data = t_removed;
