@@ -5,20 +5,30 @@
 
 // The static keyword means this is only available to this file, which means
 // these data structures are private to the scheduler task and its API functions
-static DD_LL_Leader_t *active_list;
-static DD_LL_Leader_t *overdue_list;
-static DD_LL_Leader_t *complete_list;
-
-// Queues are pointer queues https://www.freertos.org/a00118.html
-// This means we can send any data since we're just sending addresses.
-
-// TODO: WAIT NO THEY'RE NOT... They're DD_Message_t. It's the ->data that's a
-// pointer... Need to fix the code then.
+static DD_LL_Leader_t *ll_active;
+static DD_LL_Leader_t *ll_overdue;
+static DD_LL_Leader_t *ll_complete;
 
 // This is how API functions queue up work for the DDS to complete
 static QueueHandle_t *qh_request;
 // This is how the DDS returns work to the API functions
 static QueueHandle_t *qh_response;
+
+void DD_Scheduler_Task(void *pvParameters) {
+  // For initialization I'll flex that we're part of the OS, and as such it's
+  // fine to internally create queues here rather than in main(). Ultimately
+  // this is an API design decision, but it's similar to vTaskStartScheduler().
+  ll_active = ll();
+  ll_overdue = ll();
+  ll_complete = ll();
+
+  // Queues are pointer queues https://www.freertos.org/a00118.html
+  // Mostly because we're not taught in SENG anything other than heap/malloc
+  // with pointers so the idea of copying an entire struct is...confusing.
+  qh_request = xQueueCreate(5, sizeof(void *));
+  qh_response = xQueueCreate(5, sizeof(void *));
+  vQueueAddToRegistry(qh_request, "DDS Req");
+  vQueueAddToRegistry(qh_response, "DDS Res");
 
   DD_Message_t *req_message;
   while (1) {
@@ -141,57 +151,84 @@ static QueueHandle_t *qh_response;
   }
 }
 
-void create_dd_task(
-    TaskHandle_t task_handle,
-    DD_Task_Enum_t type,
-    uint32_t id,
-    uint32_t absolute_deadline){};
+// Long but I wanted to covert all bases about freeing memory on error
+static void *dd_api_call(DD_Message_Enum_t type, void *message_data) {
+  DD_Message_t *message = (DD_Message_t *)pvPortMalloc(sizeof(DD_Message_t));
+  message->type = type;
+  message->data = message_data;
 
-void delete_dd_task(uint32_t id)
-{
-  // TODO: Send a message containing a pointer to an integer (or real int???)
-  // TODO: Receive a message containing a pointer to DD_Task_t
-  // TODO: Free the task and task handle
-  return;
-};
-
-static DD_LL_Leader_t *get_dd_task_list(DD_LL_Leader_t *requested_list)
-{
-  DD_Message_t *message = (DD_Message_t *)malloc(sizeof(DD_Message_t));
-  if (message == NULL)
-    return NULL; // Shouldn't happen.
-
-  message->type = DD_API_Message_Fetch_Task_List;
-  // TODO: Oh no is this &requested_list? I don't do pointers.
-  message->data = requested_list;
-
-  if (xQueueSend(qh_request, (void *)&message, portMAX_DELAY) != pdTRUE)
-  {
-    free(message);
+  // (..., 0) means don't block if the queue is already full.
+  BaseType_t req = xQueueSend(qh_request, (void *)&message, 0);
+  printf("dd_api_call: back from xQSend\n");
+  if (req != pdTRUE) {
+    vPortFree(message);
     return NULL; // Shouldn't happen.
   }
-  DD_LL_Leader_t *returned_list;
-  if (xQueueReceive(qh_response, &returned_list, portMAX_DELAY) != pdTRUE)
-  {
-    free(message);
+  DD_Message_t *ret_message;
+  // Likewise, portMAX_DELAY means wait as long as needed for the DDS to reply.
+  BaseType_t res = xQueueReceive(qh_response, &ret_message, portMAX_DELAY);
+  printf("dd_api_call: back from xQRecv\n");
+  if (res != pdTRUE) {
+    vPortFree(message);
     return NULL; // Shouldn't happen.
   }
-  free(message);
-  // TODO: Oh no is this &requested_list? I don't do pointers.
-  return returned_list;
+  // TODO: Unneeded?
+  if (ret_message != message) {
+    printf("dd_api_call: message pointer mismatch\n");
+    vPortFree(message);
+    vPortFree(ret_message);
+    return NULL;
+  }
+  void *return_data;
+  if (message->type == DD_API_Res_OK) {
+    printf("dd_api_call: OK\n");
+    return_data = message->data;
+  } else {
+    printf("dd_api_call: NOT OK\n");
+    return_data = NULL;
+  }
+  vPortFree(message);
+  return return_data;
 };
 
-DD_LL_Leader_t *get_active_dd_task_list(void)
-{
-  return get_dd_task_list(&active_list);
+void create_dd_task(TaskHandle_t task_handle, DD_Task_Enum_t type, uint32_t id,
+                    uint32_t absolute_deadline) {
+  // Immediately stop the F-Task. DDS will start it later.
+  vTaskSuspend(task_handle);
+  DD_Task_t *task = (DD_Task_t *)pvPortMalloc(sizeof(DD_Task_t));
+  task->task_handle = task_handle;
+  task->type = type;
+  task->id = id;
+  task->absolute_deadline = absolute_deadline;
+  task->release_time = NULL;
+  task->completion_time = NULL;
+
+  DD_Task_t *ret_task = dd_api_call(DD_API_Req_Task_Delete, &id);
+  if (task == ret_task)
+    printf("create_dd_task: task release time: %u\n", task->release_time);
+  else
+    printf("create_dd_task: task pointer mismatch\n");
 };
 
-DD_LL_Leader_t *get_overdue_dd_task_list(void)
-{
-  return get_dd_task_list(&overdue_list);
+// Don't free the task since it's being used in the complete_list. Memory is
+// cleaned up in the DDS by removing list heads for lists > 10 items.
+void delete_dd_task(uint32_t id) {
+  // Address of the integer since it accepts pointers
+  DD_Task_t *task = dd_api_call(DD_API_Req_Task_Delete, &id);
+  if (task)
+    printf("delete_dd_task: task completion time: %u\n", task->completion_time);
+  else
+    printf("delete_dd_task: task not found\n");
 };
 
-DD_LL_Leader_t *get_complete_dd_task_list(void)
-{
-  return get_dd_task_list(&complete_list);
+DD_LL_Leader_t *get_active_dd_task_list(void) {
+  return dd_api_call(DD_API_Req_Fetch_Task_List, ll_active);
+};
+
+DD_LL_Leader_t *get_overdue_dd_task_list(void) {
+  return dd_api_call(DD_API_Req_Fetch_Task_List, ll_overdue);
+};
+
+DD_LL_Leader_t *get_complete_dd_task_list(void) {
+  return dd_api_call(DD_API_Req_Fetch_Task_List, ll_complete);
 };
