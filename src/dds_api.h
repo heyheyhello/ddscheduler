@@ -8,12 +8,14 @@ void create_dd_task(
     // If they want us to accept a TaskHandle_t then I'm not calling xTaskCreate
     // from in the DDS - the caller must have done xTaskCreate and xTaskSuspend
     TaskHandle_t task_handle,
+    //
     DD_Task_Enum_t type,
     // I assume we're told to accept an ID as a way to overwrite a task? I'll
     // try to make this reuse memory, otherwise simply delete/re-create. Is this
     // to see if we're overdue for periodic tasks? High absolute deadlines would
     // allow multiple of the same ID to be scheduled, so, error?
     uint32_t id,
+    //
     uint32_t absolute_deadline);
 
 // From the lab manual. Still, I worry accepting a task handle is bad API design

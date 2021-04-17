@@ -34,8 +34,7 @@ void vApplicationMallocFailedHook(void)
   timers, and semaphores.  The size of the FreeRTOS heap is set by the
   configTOTAL_HEAP_SIZE configuration constant in FreeRTOSConfig.h. */
   for (;;)
-  {
-  }
+    ;
 }
 
 void vApplicationStackOverflowHook(xTaskHandle pxTask, signed char *pcTaskName)
@@ -49,8 +48,7 @@ void vApplicationStackOverflowHook(xTaskHandle pxTask, signed char *pcTaskName)
   inspected in the debugger if the task name passed into this function is
   corrupt. */
   for (;;)
-  {
-  }
+    ;
 }
 
 void vApplicationIdleHook(void)
