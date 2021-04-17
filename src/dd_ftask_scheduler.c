@@ -44,12 +44,24 @@ void DD_Scheduler_Task(void *pvParameters)
         // after this will also be not overdue, so break.
         break;
       }
-      // Overdue.
-      // TODO: Move this task to the overdue list
-      // TODO: Prepend? Double check lab report for an order...
-      // TODO: Remove items if the list is too long?
+      // Task is overdue
+      DD_LL_Node_t *node_active = ll_cur_unlink(ll_active);
+      vTaskSuspend(node_active->task->task_handle);
+      vTaskDelete(node_active->task->task_handle);
+      ll_cur_head(ll_overdue);
+      // Too full? Remove head of list
+      while (ll_overdue->length > 10) {
+        print("DDS overdue list > 10 items removing head\n");
+        DD_LL_Node_t *node_overdue = ll_cur_unlink(ll_overdue);
+        // Overdue tasks have already had their F-Task cleaned up not D-Task
+        vPortFree(node_overdue->task);
+        ll_cur_head(ll_overdue);
+      }
+      ll_cur_tail(ll_overdue);
+      // Move to end of overdue list
+      ll_cur_append(ll_overdue, node_active);
+      printf("DDS moved %d from active list to overdue list\n", t->id);
     }
-
     // Back to processing that incoming message
     switch (incoming_message->type)
     {
