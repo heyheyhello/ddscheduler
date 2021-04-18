@@ -32,11 +32,19 @@ void ll_cur_next(DD_LL_Leader_t *leader) {
 }
 
 void ll_cur_tail(DD_LL_Leader_t *leader) {
-  for (ll_cur_head(leader); leader->cursor->next; ll_cur_next(leader))
-    ;
+  if (leader->head != NULL)
+    for (ll_cur_head(leader); leader->cursor->next; ll_cur_next(leader))
+      ;
 }
 
 void ll_cur_prepend(DD_LL_Leader_t *leader, DD_LL_Node_t *to_add) {
+  // No items. Cursor can be NULL
+  if (leader->head == NULL) {
+    to_add->next = NULL;
+    leader->head = to_add;
+    leader->length = 1;
+    return;
+  }
   if (leader->cursor == NULL) {
     printf("ll_cur_prepend cursor is NULL\n");
     return;
@@ -55,6 +63,13 @@ void ll_cur_prepend(DD_LL_Leader_t *leader, DD_LL_Node_t *to_add) {
 }
 
 void ll_cur_append(DD_LL_Leader_t *leader, DD_LL_Node_t *to_add) {
+  // No items. Cursor can be NULL
+  if (leader->head == NULL) {
+    to_add->next = NULL;
+    leader->head = to_add;
+    leader->length = 1;
+    return;
+  }
   if (leader->cursor == NULL) {
     printf("bug: ll_cur_append cursor is NULL\n");
     return;
