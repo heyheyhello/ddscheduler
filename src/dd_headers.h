@@ -27,6 +27,12 @@
 #define TRAFFIC_LIGHT_A GPIO_Pin_1
 #define TRAFFIC_LIGHT_G GPIO_Pin_2
 
+#define DD_PRIORITY_UNSCHEDULED (1)
+#define DD_PRIORITY_MONITOR_TASK (2)
+#define DD_PRIORITY_USER_BASELINE (3)
+#define DD_PRIORITY_GENERATOR_TASK (configMAX_PRIORITIES - 2)
+#define DD_PRIORITY_SCHEDULER_TASK (configMAX_PRIORITIES - 1)
+
 typedef enum DD_Task_Enum_t { PERIODIC, APERIODIC } DD_Task_Enum_t;
 
 typedef enum DD_Message_Enum_t {
@@ -77,4 +83,8 @@ void ll_empty(DD_LL_Leader_t *leader);
 
 void DD_Scheduler_Task(void *pvParameters);
 void DD_Monitor_Task(void *pvParameters);
+
+void Periodic_Task_Generator_1(void *pvParameters);
+void Periodic_Task_Generator_2(void *pvParameters);
+void Periodic_Task_Generator_3(void *pvParameters);
 #endif

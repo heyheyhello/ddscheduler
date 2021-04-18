@@ -11,7 +11,7 @@ void Periodic_Task_Generator_1(void *pvParameters) {
                 "Periodic_Task_1",        // const char *const pcName
                 configMINIMAL_STACK_SIZE, // configSTACK_DEPTH_TYPE usStackDepth
                 NULL,                     // void *const pvParameters
-                1 /* MINIMUM */,          // UBaseType_t uxPriority
+                DD_PRIORITY_UNSCHEDULED,  // UBaseType_t uxPriority
                 &(task_handle)            // TaskHandle_t *const pxCreatedTask
     );
     if (task_handle == NULL) {

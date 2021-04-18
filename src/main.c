@@ -4,27 +4,25 @@
 
 static void prvSetupHardware(void);
 
-int main(void)
-{
+int main(void) {
   printf("System clock: %u Hz\n", SystemCoreClock);
   printf("portTICK_PERIOD_MS: %u\n", portTICK_PERIOD_MS);
 
   prvSetupHardware();
 
-  // TODO: Priorities
-  xTaskCreate(DD_Scheduler_Task, "DD Scheduler Task", configMINIMAL_STACK_SIZE, NULL, 5, NULL);
-  xTaskCreate(DD_Monitor_Task, "DD Monitor Task", configMINIMAL_STACK_SIZE, NULL, 5, NULL);
+  xTaskCreate(DD_Scheduler_Task, "DD Scheduler Task", configMINIMAL_STACK_SIZE,
+              NULL, DD_PRIORITY_SCHEDULER_TASK, NULL);
+  xTaskCreate(DD_Monitor_Task, "DD Monitor Task", configMINIMAL_STACK_SIZE,
+              NULL, DD_PRIORITY_MONITOR_TASK, NULL);
 
-  // xTaskCreate(Periodic_Generator_1, "Periodic_Test_1", configMINIMAL_STACK_SIZE, NULL, 2, NULL);
-  // xTaskCreate(Periodic_Generator_2, "Periodic_Test_2", configMINIMAL_STACK_SIZE, NULL, 2, NULL);
-  // xTaskCreate(Periodic_Generator_3, "Periodic_Test_3", configMINIMAL_STACK_SIZE, NULL, 2, NULL);
+  xTaskCreate(Periodic_Task_Generator_1, "Periodic_Gen_1",
+              configMINIMAL_STACK_SIZE, NULL, DD_PRIORITY_GENERATOR_TASK, NULL);
 
   vTaskStartScheduler();
   return 0;
 }
 
-void vApplicationMallocFailedHook(void)
-{
+void vApplicationMallocFailedHook(void) {
   /* The malloc failed hook is enabled by setting
   configUSE_MALLOC_FAILED_HOOK to 1 in FreeRTOSConfig.h.
 
@@ -37,8 +35,8 @@ void vApplicationMallocFailedHook(void)
     ;
 }
 
-void vApplicationStackOverflowHook(xTaskHandle pxTask, signed char *pcTaskName)
-{
+void vApplicationStackOverflowHook(xTaskHandle pxTask,
+                                   signed char *pcTaskName) {
   (void)pcTaskName;
   (void)pxTask;
 
@@ -51,8 +49,7 @@ void vApplicationStackOverflowHook(xTaskHandle pxTask, signed char *pcTaskName)
     ;
 }
 
-void vApplicationIdleHook(void)
-{
+void vApplicationIdleHook(void) {
   volatile size_t xFreeStackSpace;
 
   /* The idle task hook is enabled by setting configUSE_IDLE_HOOK to 1 in
@@ -63,8 +60,7 @@ void vApplicationIdleHook(void)
   remains unallocated. */
   xFreeStackSpace = xPortGetFreeHeapSize();
 
-  if (xFreeStackSpace > 100)
-  {
+  if (xFreeStackSpace > 100) {
     /* By now, the kernel has allocated everything it is going to, so
     if there is a lot of heap remaining unallocated then
     the value of configTOTAL_HEAP_SIZE in FreeRTOSConfig.h can be
@@ -72,8 +68,7 @@ void vApplicationIdleHook(void)
   }
 }
 
-static void prvSetupHardware(void)
-{
+static void prvSetupHardware(void) {
   /* Ensure all priority bits are assigned as preemption priority bits.
   http://www.freertos.org/RTOS-Cortex-M3-M4.html */
   NVIC_SetPriorityGrouping(0);
@@ -88,7 +83,8 @@ static void prvSetupHardware(void)
   // First do LEDs
   GPIO_InitStruct.GPIO_Mode = GPIO_Mode_OUT;
   // Traffic Red/Amber/Green and then Shift Reset/Shift Clock/Shift Data
-  GPIO_InitStruct.GPIO_Pin = TRAFFIC_LIGHT_R | TRAFFIC_LIGHT_A | TRAFFIC_LIGHT_G;
+  GPIO_InitStruct.GPIO_Pin =
+      TRAFFIC_LIGHT_R | TRAFFIC_LIGHT_A | TRAFFIC_LIGHT_G;
   GPIO_InitStruct.GPIO_OType = GPIO_PuPd_UP;
   // For LEDs we're told to use a high speed
   GPIO_InitStruct.GPIO_Speed = GPIO_Speed_25MHz;
