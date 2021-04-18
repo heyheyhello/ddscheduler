@@ -71,14 +71,33 @@ void DD_Scheduler_Task(void *pvParameters) {
     // Back to processing that incoming message
     switch (req_message->type) {
     case (DD_API_Req_Task_Create):
-      DD_Task_t *task = (DD_Task_t *)req_message->data;
-
-      // TODO: Walk the LL active list and put it in the right spot. This will
-      // require two passes; one to insert and one to adjust all the priorities
-      // of tasks based on where it was put in the list.
-
+      DD_Task_t *task_ins = (DD_Task_t *)req_message->data;
+      DD_LL_Node_t *node = ll_node(task_ins);
+      ll_cur_head(ll_active);
+      int prio = ll_active->cursor
+                     ? uxTaskPriorityGet(ll_active->cursor->task->task_handle)
+                     : DD_PRIORITY_USER_BASELINE;
+      // Consider prepending each item
+      for (; ll_active->cursor; ll_cur_next(ll_active)) {
+        DD_Task_t *t = ll_active->cursor->task;
+        if (task_ins->absolute_deadline >= t->absolute_deadline) {
+          prio--;
+          continue;
+        }
+        // Add the task
+        ll_cur_prepend(ll_active, node);
+        vTaskPrioritySet(task_ins->task_handle, prio);
+        break;
+      }
+      // Ran off the end of the list, so append to tail since prepend failed
+      if (ll_active->cursor == NULL) {
+        ll_active->cursor = ll_active->cursor_prev;
+        // If NULL, adds first element, else, doesn't use cursor_prev
+        ll_cur_append(ll_active, node);
+        vTaskPrioritySet(task_ins->task_handle, prio);
+      }
       // Return address of the DD_Task_t
-      res_message->data = task;
+      res_message->data = task_ins;
       break;
 
     case (DD_API_Req_Task_Delete):
