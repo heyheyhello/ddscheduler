@@ -32,8 +32,7 @@ void Periodic_Task_Generator_1(void *pvParameters) {
         xTaskGetTickCount() + TASK_1_PERIOD // uint32_t absolute_deadline);
     );
     // Delay THIS generator task. Not the created one
-    // vTaskDelay(TASK_1_PERIOD);
-    vTaskDelay(1000);
+    vTaskDelay(TASK_1_PERIOD);
   }
 }
 

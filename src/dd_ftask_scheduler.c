@@ -48,30 +48,30 @@ void DD_Scheduler_Task(void *pvParameters) {
     // check. This way the work is only performed on an as needed basis.
     // printf("DDS recv message: %u\n", req_message);
     TickType_t time_now = xTaskGetTickCount();
-//    for (ll_cur_head(ll_active); ll_active->cursor; ll_cur_next(ll_active)) {
-//      DD_Task_t *t = ll_active->cursor->task;
-//      if (time_now < t->absolute_deadline) {
-//        // Not overdue. Also! Because this list is sorted as EDF all elements
-//        // after this will also be not overdue, so break.
-//        break;
-//      }
-//      // Task is overdue
-//      DD_LL_Node_t *node_active = ll_cur_unlink(ll_active);
-//      vTaskSuspend(node_active->task->task_handle);
-//      vTaskDelete(node_active->task->task_handle);
-//      ll_cur_head(ll_overdue);
-//      // Too full? Remove head of list
-//      while (ll_overdue->length >= 10) {
-//        DD_LL_Node_t *node_overdue = ll_cur_unlink(ll_overdue);
-//        // Overdue tasks have already had their F-Task cleaned up not D-Task
-//        vPortFree(node_overdue->task);
-//        ll_cur_head(ll_overdue);
-//      }
-//      ll_cur_tail(ll_overdue);
-//      // Move to end of overdue list
-//      vTaskDelete(t->task_handle);
-//      ll_cur_append(ll_overdue, node_active);
-//    }
+    for (ll_cur_head(ll_active); ll_active->cursor; ll_cur_next(ll_active)) {
+      DD_Task_t *t = ll_active->cursor->task;
+      if (time_now < t->absolute_deadline) {
+        // Not overdue. Also! Because this list is sorted as EDF all elements
+        // after this will also be not overdue, so break.
+        break;
+      }
+      // Task is overdue
+      DD_LL_Node_t *node_active = ll_cur_unlink(ll_active);
+      vTaskSuspend(node_active->task->task_handle);
+      vTaskDelete(node_active->task->task_handle);
+      ll_cur_head(ll_overdue);
+      // Too full? Remove head of list
+      while (ll_overdue->length >= 10) {
+        DD_LL_Node_t *node_overdue = ll_cur_unlink(ll_overdue);
+        // Overdue tasks have already had their F-Task cleaned up not D-Task
+        vPortFree(node_overdue->task);
+        ll_cur_head(ll_overdue);
+      }
+      ll_cur_tail(ll_overdue);
+      // Move to end of overdue list
+      vTaskDelete(t->task_handle);
+      ll_cur_append(ll_overdue, node_active);
+    }
     // Memory is shared, don't allocate a new message
     DD_Message_t *res_message;
     // Point to same struct...
