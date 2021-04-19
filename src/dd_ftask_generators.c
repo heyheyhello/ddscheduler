@@ -12,7 +12,7 @@ void Periodic_Task_Generator_1(void *pvParameters) {
 	printf("Launching task 1 via generator\n");
     TaskHandle_t task_handle;
     xTaskCreate(Periodic_Task_1,          // TaskFunction_t Function
-                "Periodic_Task_1",        // const char *const pcName
+                "Task_1",                 // const char *const pcName
                 configMINIMAL_STACK_SIZE, // configSTACK_DEPTH_TYPE usStackDepth
                 NULL,                     // void *const pvParameters
                 DD_PRIORITY_UNSCHEDULED,  // UBaseType_t uxPriority
@@ -31,9 +31,9 @@ void Periodic_Task_Generator_1(void *pvParameters) {
         1,                                  // uint32_t id,
         xTaskGetTickCount() + TASK_1_PERIOD // uint32_t absolute_deadline);
     );
-
     // Delay THIS generator task. Not the created one
-    vTaskDelay(TASK_1_PERIOD);
+    // vTaskDelay(TASK_1_PERIOD);
+    vTaskDelay(1000);
   }
 }
 

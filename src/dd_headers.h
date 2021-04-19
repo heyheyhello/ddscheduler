@@ -27,8 +27,10 @@
 #define TRAFFIC_LIGHT_G GPIO_Pin_2
 
 #define DD_PRIORITY_UNSCHEDULED (1)
-#define DD_PRIORITY_MONITOR_TASK (2)
-#define DD_PRIORITY_USER_BASELINE (3)
+// Timer service is priority 3; be higher than that...
+#define DD_PRIORITY_MONITOR_TASK (4)
+#define DD_PRIORITY_USER_BASELINE (5)
+// Never interrupt these...
 #define DD_PRIORITY_GENERATOR_TASK (configMAX_PRIORITIES - 2)
 #define DD_PRIORITY_SCHEDULER_TASK (configMAX_PRIORITIES - 1)
 

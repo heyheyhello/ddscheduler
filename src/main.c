@@ -11,12 +11,11 @@ int main(void) {
 
   prvSetupHardware();
 
-  xTaskCreate(DD_Scheduler_Task, "DD Scheduler Task", configMINIMAL_STACK_SIZE,
+  xTaskCreate(DD_Scheduler_Task, "Scheduler", configMINIMAL_STACK_SIZE,
               NULL, DD_PRIORITY_SCHEDULER_TASK, NULL);
-//  xTaskCreate(DD_Monitor_Task, "DD Monitor Task", configMINIMAL_STACK_SIZE,
-//              NULL, DD_PRIORITY_MONITOR_TASK, NULL);
-
-  xTaskCreate(Periodic_Task_Generator_1, "Periodic_Gen_1",
+  xTaskCreate(DD_Monitor_Task, "Monitor", configMINIMAL_STACK_SIZE,
+              NULL, DD_PRIORITY_MONITOR_TASK, NULL);
+  xTaskCreate(Periodic_Task_Generator_1, "Gen_1",
               configMINIMAL_STACK_SIZE, NULL, DD_PRIORITY_GENERATOR_TASK, NULL);
 
   vTaskStartScheduler();

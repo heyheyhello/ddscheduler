@@ -9,26 +9,38 @@ void DD_Monitor_Task(void *pvParameters) {
   vTaskDelay(1000);
   DD_LL_Leader_t *ll;
   while (1) {
-    printf("\nMonitoring (F-Task Priority: %u; Tick: %u)\n",
-           (unsigned int)xTaskGetTickCount(),
-           (unsigned int)uxTaskPriorityGet(NULL));
+    printf("## Monitoring (F-Task Priority: %u; Tick: %u)\n",
+           (unsigned int)uxTaskPriorityGet(NULL),
+		   (unsigned int)xTaskGetTickCount());
 
     // TODO: Print information on the deadlines, creation times etc.
     ll = get_active_dd_task_list();
-    printf("Monitor Active List (%d):\n", ll->length);
+    printf("## Active (%d):\n", ll->length);
     for (ll_cur_head(ll); ll->cursor; ll_cur_next(ll))
-      printf(" - ID: %u\n", (unsigned int)ll->cursor->task->id);
+      printf("## - ID:%d R:%d D:%d C:%d\n",
+        ll->cursor->task->id,
+		ll->cursor->task->release_time,
+		ll->cursor->task->absolute_deadline,
+		ll->cursor->task->completion_time);
 
     ll = get_overdue_dd_task_list();
-    printf("Monitor Overdue List (%d):\n", ll->length);
+    printf("## Overdue (%d):\n", ll->length);
     for (ll_cur_head(ll); ll->cursor; ll_cur_next(ll))
-      printf(" - ID: %u\n", (unsigned int)ll->cursor->task->id);
+      printf("## - ID:%d R:%d D:%d C:%d\n",
+        ll->cursor->task->id,
+  		ll->cursor->task->release_time,
+  		ll->cursor->task->absolute_deadline,
+  		ll->cursor->task->completion_time);
 
     ll = get_complete_dd_task_list();
-    printf("Monitor Complete List (%d):\n", ll->length);
+    printf("## Complete (%d):\n", ll->length);
     for (ll_cur_head(ll); ll->cursor; ll_cur_next(ll))
-      printf(" - ID: %u\n", (unsigned int)ll->cursor->task->id);
+      printf("## - ID:%d R:%d D:%d C:%d\n",
+        ll->cursor->task->id,
+  		ll->cursor->task->release_time,
+  		ll->cursor->task->absolute_deadline,
+  		ll->cursor->task->completion_time);
 
-    vTaskDelay(1000);
+    vTaskDelay(500);
   }
 }

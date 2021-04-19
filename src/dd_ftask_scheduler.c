@@ -14,6 +14,11 @@ static QueueHandle_t *qh_request;
 // This is how the DDS returns work to the API functions
 static QueueHandle_t *qh_response;
 
+// Potential bug: If a user task is in the middle of calling one of the public
+// DDS APIs when it becomes overdue, is it possible it is vTaskDelete'd before
+// it has heard back from the scheduler? If so, there's now a response waiting
+// for a dead recipient and the next caller will open the wrong mail...
+
 void DD_Scheduler_Task(void *pvParameters) {
   // For initialization I'll flex that we're part of the OS, and as such it's
   // fine to internally create queues here rather than in main(). Ultimately
@@ -34,7 +39,6 @@ void DD_Scheduler_Task(void *pvParameters) {
   while (1) {
     if (xQueueReceive(qh_request, &req_message, 500) == pdFALSE) {
       // No incoming messages but timeout expired. That's fine, loop again...
-      printf("DDS no messages. Looping again...");
       continue;
     }
 
@@ -42,42 +46,42 @@ void DD_Scheduler_Task(void *pvParameters) {
     // implement software timers since the monitor task is the only one reading
     // overdue tasks, and it will send us a message, which calls this overdue
     // check. This way the work is only performed on an as needed basis.
-    printf("DDS RECV\n");
+    // printf("DDS recv message: %u\n", req_message);
     TickType_t time_now = xTaskGetTickCount();
-    for (ll_cur_head(ll_active); ll_active->cursor; ll_cur_next(ll_active)) {
-      DD_Task_t *t = ll_active->cursor->task;
-      if (time_now < t->absolute_deadline) {
-        // Not overdue. Also! Because this list is sorted as EDF all elements
-        // after this will also be not overdue, so break.
-        break;
-      }
-      // Task is overdue
-      DD_LL_Node_t *node_active = ll_cur_unlink(ll_active);
-      vTaskSuspend(node_active->task->task_handle);
-      vTaskDelete(node_active->task->task_handle);
-      ll_cur_head(ll_overdue);
-      // Too full? Remove head of list
-      while (ll_overdue->length > 10) {
-        printf("DDS overdue list > 10 items removing head\n");
-        DD_LL_Node_t *node_overdue = ll_cur_unlink(ll_overdue);
-        // Overdue tasks have already had their F-Task cleaned up not D-Task
-        vPortFree(node_overdue->task);
-        ll_cur_head(ll_overdue);
-      }
-      ll_cur_tail(ll_overdue);
-      // Move to end of overdue list
-      vTaskDelete(t->task_handle);
-      ll_cur_append(ll_overdue, node_active);
-      printf("DDS moved %d from active list to overdue list\n", (int)t->id);
-    }
+//    for (ll_cur_head(ll_active); ll_active->cursor; ll_cur_next(ll_active)) {
+//      DD_Task_t *t = ll_active->cursor->task;
+//      if (time_now < t->absolute_deadline) {
+//        // Not overdue. Also! Because this list is sorted as EDF all elements
+//        // after this will also be not overdue, so break.
+//        break;
+//      }
+//      // Task is overdue
+//      DD_LL_Node_t *node_active = ll_cur_unlink(ll_active);
+//      vTaskSuspend(node_active->task->task_handle);
+//      vTaskDelete(node_active->task->task_handle);
+//      ll_cur_head(ll_overdue);
+//      // Too full? Remove head of list
+//      while (ll_overdue->length >= 10) {
+//        DD_LL_Node_t *node_overdue = ll_cur_unlink(ll_overdue);
+//        // Overdue tasks have already had their F-Task cleaned up not D-Task
+//        vPortFree(node_overdue->task);
+//        ll_cur_head(ll_overdue);
+//      }
+//      ll_cur_tail(ll_overdue);
+//      // Move to end of overdue list
+//      vTaskDelete(t->task_handle);
+//      ll_cur_append(ll_overdue, node_active);
+//    }
     // Memory is shared, don't allocate a new message
-    DD_Message_t *res_message = req_message;
+    DD_Message_t *res_message;
+    // Point to same struct...
+    res_message = req_message;
     // Back to processing that incoming message
     switch (req_message->type) {
     case (DD_API_Req_Task_Create): {
       DD_Task_t *task_ins = (DD_Task_t *)req_message->data;
       DD_LL_Node_t *node = ll_node(task_ins);
-      printf("DDS CREATE %d\n", (int)node->task->id);
+      printf("DDS create %d\n", (int)node->task->id);
       ll_cur_head(ll_active);
       int prio = ll_active->cursor
                      ? uxTaskPriorityGet(ll_active->cursor->task->task_handle)
@@ -91,7 +95,6 @@ void DD_Scheduler_Task(void *pvParameters) {
         }
         // Add the task
         ll_cur_prepend(ll_active, node);
-        vTaskPrioritySet(task_ins->task_handle, prio);
         break;
       }
       // Ran off the end of the list, so append to tail since prepend failed
@@ -99,42 +102,44 @@ void DD_Scheduler_Task(void *pvParameters) {
         ll_active->cursor = ll_active->cursor_prev;
         // If NULL, adds first element, else, doesn't use cursor_prev
         ll_cur_append(ll_active, node);
-        vTaskPrioritySet(task_ins->task_handle, prio);
       }
-      printf("DDS CREATE DONE\n");
+      task_ins->release_time = time_now;
+      vTaskPrioritySet(task_ins->task_handle, prio);
+      vTaskResume(task_ins->task_handle);
       // Return address of the DD_Task_t
       res_message->data = task_ins;
       break;
     }
     case (DD_API_Req_Task_Delete): {
       // Hate pointers but I want to keep the queue as a generic pointer queue.
-      uint32_t *task_id_pointer = (void *)&req_message->data;
-      uint32_t task_id = *task_id_pointer;
-
+      uint32_t task_id = (uint32_t)req_message->data;
       ll_cur_head(ll_active);
-      DD_Task_t *t = ll_active->cursor->task;
+      DD_Task_t *t = NULL;
       DD_Task_t *t_removed = NULL;
-      uint32_t top_priority = uxTaskPriorityGet(t->task_handle);
+      uint32_t top_priority = 0;
+      if (ll_active->length > 0) {
+    	// Otherwise this throws a hard fault on the CPU
+    	top_priority = uxTaskPriorityGet(ll_active->cursor->task->task_handle);
+      }
       for (; ll_active->cursor; ll_cur_next(ll_active)) {
         t = ll_active->cursor->task;
         if (t->id != task_id)
           continue;
         t_removed = t;
+        // Previous tick it was done. This current tick is the scheduler.
+        t_removed->completion_time = xTaskGetTickCount() - 1;
         DD_LL_Node_t *node_active = ll_cur_unlink(ll_active);
         ll_cur_head(ll_complete);
         // Too full? Remove head of list
-        while (ll_complete->length > 10) {
+        while (ll_complete->length >= 10) {
           DD_LL_Node_t *node_complete = ll_cur_unlink(ll_complete);
-          printf("DDS complete list > 10 items removing head\n");
           // Complete tasks have already had their F-Task cleaned up not D-Task
           vPortFree(node_complete->task);
           ll_cur_head(ll_complete);
         }
         ll_cur_tail(ll_complete);
         // Move to end of complete list
-        vTaskDelete(t->task_handle);
         ll_cur_append(ll_complete, node_active);
-        printf("DDS moved %d from active list to complete list\n", (int)task_id);
         break;
       }
       // TODO: Diagram this on paper to make sure I understand...
@@ -160,20 +165,13 @@ void DD_Scheduler_Task(void *pvParameters) {
       // do that here and return a pointer to a new list. I'm not doing that
       // though, since all the code so far is trusted to not free things that
       // aren't theirs. This is a performance tradeoff.
-
-      if (list_to_return == ll_active)
-        printf("DDS ll_active\n");
-      if (list_to_return == ll_overdue)
-        printf("DDS ll_overdue\n");
-      if (list_to_return == ll_complete)
-        printf("DDS ll_complete\n");
-
       res_message->data = list_to_return;
       break;
     }
     }
     res_message->type = DD_API_Res_OK;
-    if (xQueueSend(qh_response, &res_message, portMAX_DELAY) == pdFALSE)
+    // printf("DDS returning message: %u\n", res_message);
+    if (xQueueSend(qh_response, (void *)&res_message, portMAX_DELAY) == pdFALSE)
       printf("DDS error responding to DD_API enum %d\n", req_message->type);
   }
 }
@@ -183,10 +181,10 @@ static void *dd_api_call(DD_Message_Enum_t type, void *message_data) {
   DD_Message_t *message = (DD_Message_t *)pvPortMalloc(sizeof(DD_Message_t));
   message->type = type;
   message->data = message_data;
-
+  // printf("dd_api_call %d sending %u\n", type, message);
   // (..., 0) means don't block if the queue is already full.
   BaseType_t req = xQueueSend(qh_request, (void *)&message, 0);
-  printf("dd_api_call: back from xQSend\n");
+  // printf("dd_api_call %d back from xQSend\n", type);
   if (req != pdTRUE) {
     vPortFree(message);
     return NULL; // Shouldn't happen.
@@ -194,24 +192,23 @@ static void *dd_api_call(DD_Message_Enum_t type, void *message_data) {
   DD_Message_t *ret_message;
   // Likewise, portMAX_DELAY means wait as long as needed for the DDS to reply.
   BaseType_t res = xQueueReceive(qh_response, &ret_message, portMAX_DELAY);
-  printf("dd_api_call: back from xQRecv\n");
+  // printf("dd_api_call %d back from xQRecv; message is %u\n", type, ret_message);
   if (res != pdTRUE) {
     vPortFree(message);
     return NULL; // Shouldn't happen.
   }
-  // TODO: Unneeded?
   if (ret_message != message) {
-    printf("dd_api_call: message pointer mismatch\n");
+    printf("dd_api_call %d message pointer mismatch\n", type);
     vPortFree(message);
     vPortFree(ret_message);
     return NULL;
   }
   void *return_data;
   if (message->type == DD_API_Res_OK) {
-    printf("dd_api_call: OK\n");
+    // printf("dd_api_call %d OK\n", type);
     return_data = message->data;
   } else {
-    printf("dd_api_call: NOT OK\n");
+    printf("dd_api_call %d NOT OK\n", type);
     return_data = NULL;
   }
   vPortFree(message);
@@ -230,7 +227,7 @@ void create_dd_task(TaskHandle_t task_handle, DD_Task_Enum_t type, uint32_t id,
   task->release_time = NULL;
   task->completion_time = NULL;
 
-  DD_Task_t *ret_task = dd_api_call(DD_API_Req_Task_Delete, &id);
+  DD_Task_t *ret_task = dd_api_call(DD_API_Req_Task_Create, task);
   if (task == ret_task)
     printf("create_dd_task: task release time: %d\n", (int)task->release_time);
   else
@@ -240,12 +237,13 @@ void create_dd_task(TaskHandle_t task_handle, DD_Task_Enum_t type, uint32_t id,
 // Don't free the task since it's being used in the complete_list. Memory is
 // cleaned up in the DDS by removing list heads for lists > 10 items.
 void delete_dd_task(uint32_t id) {
-  // Address of the integer since it accepts pointers
-  DD_Task_t *task = dd_api_call(DD_API_Req_Task_Delete, &id);
-  if (task)
+  DD_Task_t *task = dd_api_call(DD_API_Req_Task_Delete, id);
+  if (task) {
     printf("delete_dd_task: task completion time: %d\n", (int)task->completion_time);
-  else
+    vTaskDelete(task->task_handle);
+  } else {
     printf("delete_dd_task: task not found\n");
+  }
 };
 
 DD_LL_Leader_t *get_active_dd_task_list(void) {
