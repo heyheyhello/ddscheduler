@@ -13,7 +13,6 @@ void DD_Monitor_Task(void *pvParameters) {
            (unsigned int)uxTaskPriorityGet(NULL),
            (unsigned int)xTaskGetTickCount());
 
-    // TODO: Print information on the deadlines, creation times etc.
     ll = get_active_dd_task_list();
     printf("## Active (%d now):\n", ll->length);
     for (ll_cur_head(ll); ll->cursor; ll_cur_next(ll))

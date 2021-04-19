@@ -14,11 +14,6 @@ static QueueHandle_t *qh_request;
 // This is how the DDS returns work to the API functions
 static QueueHandle_t *qh_response;
 
-// Potential bug: If a user task is in the middle of calling one of the public
-// DDS APIs when it becomes overdue, is it possible it is vTaskDelete'd before
-// it has heard back from the scheduler? If so, there's now a response waiting
-// for a dead recipient and the next caller will open the wrong mail...
-
 void DD_Scheduler_Task(void *pvParameters) {
   // For initialization I'll flex that we're part of the OS, and as such it's
   // fine to internally create queues here rather than in main(). Ultimately
@@ -81,9 +76,10 @@ void DD_Scheduler_Task(void *pvParameters) {
       DD_Task_t *task_ins = (DD_Task_t *)req_message->data;
       DD_LL_Node_t *node = ll_node(task_ins);
       ll_cur_head(ll_active);
-      uint32_t prio = ll_active->cursor
-                     ? uxTaskPriorityGet(ll_active->cursor->task->task_handle)
-                     : DD_PRIORITY_USER_BASELINE;
+      uint32_t prio =
+          ll_active->cursor
+              ? uxTaskPriorityGet(ll_active->cursor->task->task_handle)
+              : DD_PRIORITY_USER_BASELINE;
       // Consider prepending each item
       for (; ll_active->cursor; ll_cur_next(ll_active)) {
         DD_Task_t *t = ll_active->cursor->task;
@@ -116,8 +112,8 @@ void DD_Scheduler_Task(void *pvParameters) {
       DD_Task_t *t_removed = NULL;
       uint32_t prio = 0;
       if (ll_active->length > 0) {
-    	// Otherwise this throws a hard fault on the CPU
-    	prio = uxTaskPriorityGet(ll_active->cursor->task->task_handle);
+        // Otherwise this throws a hard fault on the CPU
+        prio = uxTaskPriorityGet(ll_active->cursor->task->task_handle);
       }
       for (; ll_active->cursor; ll_cur_next(ll_active)) {
         t = ll_active->cursor->task;
@@ -140,7 +136,6 @@ void DD_Scheduler_Task(void *pvParameters) {
         ll_cur_append(ll_complete, node_active);
         break;
       }
-      // TODO: Diagram this on paper to make sure I understand...
       // If there was a task to remove, then decrement the priorities before it
       if (t_removed != NULL) {
         for (ll_cur_head(ll_active); ll_active->cursor;
@@ -191,7 +186,8 @@ static void *dd_api_call(DD_Message_Enum_t type, void *message_data) {
   DD_Message_t *ret_message;
   // Likewise, portMAX_DELAY means wait as long as needed for the DDS to reply.
   BaseType_t res = xQueueReceive(qh_response, &ret_message, portMAX_DELAY);
-  // printf("dd_api_call %d back from xQRecv; message is %u\n", type, ret_message);
+  // printf("dd_api_call %d back from xQRecv; message is %u\n", type,
+  // ret_message);
   if (res != pdTRUE) {
     vPortFree(message);
     return NULL; // Shouldn't happen.
@@ -238,7 +234,8 @@ void create_dd_task(TaskHandle_t task_handle, DD_Task_Enum_t type, uint32_t id,
 void delete_dd_task(uint32_t id) {
   DD_Task_t *task = dd_api_call(DD_API_Req_Task_Delete, id);
   if (task) {
-    // printf("delete_dd_task: task completion time: %d\n", (int)task->completion_time);
+    // printf("delete_dd_task: task completion time: %d\n",
+    // (int)task->completion_time);
     vTaskDelete(task->task_handle);
   } else {
     printf("delete_dd_task: task not found\n");
