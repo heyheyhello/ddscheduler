@@ -18,7 +18,6 @@
 #include "../FreeRTOS_Source/include/semphr.h"
 #include "../FreeRTOS_Source/include/task.h"
 #include "../FreeRTOS_Source/include/timers.h"
-#include "../FreeRTOS_Source/portable/MemMang/heap_4.c"
 #include "stm32f4xx.h"
 
 // From our PDF doc. Everything is on GPIOC.
@@ -58,6 +57,11 @@ typedef struct DD_Message_t {
 
 // Linked list implementation
 
+typedef struct DD_LL_Node_t {
+  DD_Task_t *task;
+  struct DD_LL_Node_t *next;
+} DD_LL_Node_t;
+
 typedef struct DD_LL_Leader_t {
   DD_LL_Node_t *head;
   DD_LL_Node_t *cursor;
@@ -65,12 +69,7 @@ typedef struct DD_LL_Leader_t {
   unsigned int length;
 } DD_LL_Leader_t;
 
-typedef struct DD_LL_Node_t {
-  DD_Task_t *task;
-  struct DD_LL_Node_t *next;
-} DD_LL_Node_t;
-
-DD_LL_Leader_t *ll();
+DD_LL_Leader_t *ll_leader();
 DD_LL_Node_t *ll_node(DD_Task_t *dd_task);
 void ll_cur_head(DD_LL_Leader_t *leader);
 void ll_cur_next(DD_LL_Leader_t *leader);

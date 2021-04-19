@@ -112,7 +112,7 @@ void ll_print(DD_LL_Leader_t *leader) {
   printf("ll_print items: %d\n", leader->length);
   for (; runner; runner = runner->next) {
     task = runner->task;
-    printf("ll_print task: '%s'", task->id);
+    printf("ll_print task: '%d'", task->id);
     if (runner == leader->cursor)
       printf(" < cursor");
     printf("\n");

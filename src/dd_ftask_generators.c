@@ -2,11 +2,15 @@
 // Periodically creates DD-Tasks that need to be scheduled by the DD Scheduler
 
 #include "dd_headers.h"
+#include "dds_api.h"
 #include "dd_tests.h"
+
+void Periodic_Task_1(void *pvParameters);
 
 void Periodic_Task_Generator_1(void *pvParameters) {
   while (1) {
-    TaskHandle_t *task_handle;
+	printf("Launching task 1 via generator\n");
+    TaskHandle_t task_handle;
     xTaskCreate(Periodic_Task_1,          // TaskFunction_t Function
                 "Periodic_Task_1",        // const char *const pcName
                 configMINIMAL_STACK_SIZE, // configSTACK_DEPTH_TYPE usStackDepth
@@ -15,7 +19,7 @@ void Periodic_Task_Generator_1(void *pvParameters) {
                 &(task_handle)            // TaskHandle_t *const pxCreatedTask
     );
     if (task_handle == NULL) {
-      printf("xTaskCreate task handle is NULL");
+      printf("Generator xTaskCreate task handle is NULL\n");
       return;
     }
     // Let the DDS start it later with a new priority
@@ -39,19 +43,14 @@ void Periodic_Task_1(void *pvParameters) {
   TickType_t execution_time = TASK_1_EXEC_TIME / portTICK_PERIOD_MS;
   printf("Task 1 (F-Task Priority: %u; Tick: %u)\n",
          (unsigned int)uxTaskPriorityGet(NULL), (unsigned int)current_tick);
-  int led_state = 0;
+  printf("Busy loop for %d\n", (int)execution_time);
   while (execution_time) {
-    if (current_tick == previous_tick)
+	current_tick = xTaskGetTickCount();
+	if (current_tick == previous_tick)
       continue;
-    current_tick = xTaskGetTickCount();
-    previous_tick = current_tick;
     execution_time--;
-    // Without this the LEDs flash too quickly
-    if (current_tick % 2 == 0) {
-      // TODO: LED on or off depending on the led_state
-    }
   }
-  // TODO: LED off
+  printf("Busy loop done; deleting\n");
 
   // There's no need to vTaskDelay here. If we're done we're done.
   delete_dd_task(1);

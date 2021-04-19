@@ -18,9 +18,9 @@ void DD_Scheduler_Task(void *pvParameters) {
   // For initialization I'll flex that we're part of the OS, and as such it's
   // fine to internally create queues here rather than in main(). Ultimately
   // this is an API design decision, but it's similar to vTaskStartScheduler().
-  ll_active = ll();
-  ll_overdue = ll();
-  ll_complete = ll();
+  ll_active = ll_leader();
+  ll_overdue = ll_leader();
+  ll_complete = ll_leader();
 
   // Queues are pointer queues https://www.freertos.org/a00118.html
   // Mostly because we're not taught in SENG anything other than heap/malloc
@@ -32,14 +32,17 @@ void DD_Scheduler_Task(void *pvParameters) {
 
   DD_Message_t *req_message;
   while (1) {
-    if (xQueueReceive(qh_request, &req_message, portMAX_DELAY) == pdFALSE)
+    if (xQueueReceive(qh_request, &req_message, 500) == pdFALSE) {
       // No incoming messages but timeout expired. That's fine, loop again...
+      printf("DDS no messages. Looping again...");
       continue;
+    }
 
     // We have a message! First check for overdue tasks. I'm avoiding needing to
     // implement software timers since the monitor task is the only one reading
     // overdue tasks, and it will send us a message, which calls this overdue
     // check. This way the work is only performed on an as needed basis.
+    printf("DDS RECV\n");
     TickType_t time_now = xTaskGetTickCount();
     for (ll_cur_head(ll_active); ll_active->cursor; ll_cur_next(ll_active)) {
       DD_Task_t *t = ll_active->cursor->task;
@@ -55,7 +58,7 @@ void DD_Scheduler_Task(void *pvParameters) {
       ll_cur_head(ll_overdue);
       // Too full? Remove head of list
       while (ll_overdue->length > 10) {
-        print("DDS overdue list > 10 items removing head\n");
+        printf("DDS overdue list > 10 items removing head\n");
         DD_LL_Node_t *node_overdue = ll_cur_unlink(ll_overdue);
         // Overdue tasks have already had their F-Task cleaned up not D-Task
         vPortFree(node_overdue->task);
@@ -63,16 +66,18 @@ void DD_Scheduler_Task(void *pvParameters) {
       }
       ll_cur_tail(ll_overdue);
       // Move to end of overdue list
+      vTaskDelete(t->task_handle);
       ll_cur_append(ll_overdue, node_active);
-      printf("DDS moved %d from active list to overdue list\n", t->id);
+      printf("DDS moved %d from active list to overdue list\n", (int)t->id);
     }
     // Memory is shared, don't allocate a new message
     DD_Message_t *res_message = req_message;
     // Back to processing that incoming message
     switch (req_message->type) {
-    case (DD_API_Req_Task_Create):
+    case (DD_API_Req_Task_Create): {
       DD_Task_t *task_ins = (DD_Task_t *)req_message->data;
       DD_LL_Node_t *node = ll_node(task_ins);
+      printf("DDS CREATE %d\n", (int)node->task->id);
       ll_cur_head(ll_active);
       int prio = ll_active->cursor
                      ? uxTaskPriorityGet(ll_active->cursor->task->task_handle)
@@ -96,11 +101,12 @@ void DD_Scheduler_Task(void *pvParameters) {
         ll_cur_append(ll_active, node);
         vTaskPrioritySet(task_ins->task_handle, prio);
       }
+      printf("DDS CREATE DONE\n");
       // Return address of the DD_Task_t
       res_message->data = task_ins;
       break;
-
-    case (DD_API_Req_Task_Delete):
+    }
+    case (DD_API_Req_Task_Delete): {
       // Hate pointers but I want to keep the queue as a generic pointer queue.
       uint32_t *task_id_pointer = (void *)&req_message->data;
       uint32_t task_id = *task_id_pointer;
@@ -118,16 +124,17 @@ void DD_Scheduler_Task(void *pvParameters) {
         ll_cur_head(ll_complete);
         // Too full? Remove head of list
         while (ll_complete->length > 10) {
-          print("DDS complete list > 10 items removing head\n");
           DD_LL_Node_t *node_complete = ll_cur_unlink(ll_complete);
+          printf("DDS complete list > 10 items removing head\n");
           // Complete tasks have already had their F-Task cleaned up not D-Task
           vPortFree(node_complete->task);
           ll_cur_head(ll_complete);
         }
         ll_cur_tail(ll_complete);
         // Move to end of complete list
+        vTaskDelete(t->task_handle);
         ll_cur_append(ll_complete, node_active);
-        printf("DDS moved %d from active list to complete list\n", task_id);
+        printf("DDS moved %d from active list to complete list\n", (int)task_id);
         break;
       }
       // TODO: Diagram this on paper to make sure I understand...
@@ -141,13 +148,13 @@ void DD_Scheduler_Task(void *pvParameters) {
           vTaskPrioritySet(t->task_handle, --top_priority);
         }
       } else {
-        print("DDS task not in active list %d\n", task_id);
+        printf("DDS task not in active list %d\n", (int)task_id);
       }
       // Return address of the DD_Task_t (or NULL if not found)
       res_message->data = t_removed;
       break;
-
-    case (DD_API_Req_Fetch_Task_List):
+    }
+    case (DD_API_Req_Fetch_Task_List): {
       DD_LL_Leader_t *list_to_return = (DD_LL_Leader_t *)req_message->data;
       // If I was going to modify the list, make a copy, redact things, etc, I'd
       // do that here and return a pointer to a new list. I'm not doing that
@@ -163,6 +170,7 @@ void DD_Scheduler_Task(void *pvParameters) {
 
       res_message->data = list_to_return;
       break;
+    }
     }
     res_message->type = DD_API_Res_OK;
     if (xQueueSend(qh_response, &res_message, portMAX_DELAY) == pdFALSE)
@@ -224,7 +232,7 @@ void create_dd_task(TaskHandle_t task_handle, DD_Task_Enum_t type, uint32_t id,
 
   DD_Task_t *ret_task = dd_api_call(DD_API_Req_Task_Delete, &id);
   if (task == ret_task)
-    printf("create_dd_task: task release time: %u\n", task->release_time);
+    printf("create_dd_task: task release time: %d\n", (int)task->release_time);
   else
     printf("create_dd_task: task pointer mismatch\n");
 };
@@ -235,7 +243,7 @@ void delete_dd_task(uint32_t id) {
   // Address of the integer since it accepts pointers
   DD_Task_t *task = dd_api_call(DD_API_Req_Task_Delete, &id);
   if (task)
-    printf("delete_dd_task: task completion time: %u\n", task->completion_time);
+    printf("delete_dd_task: task completion time: %d\n", (int)task->completion_time);
   else
     printf("delete_dd_task: task not found\n");
 };

@@ -17,17 +17,17 @@ void DD_Monitor_Task(void *pvParameters) {
     ll = get_active_dd_task_list();
     printf("Monitor Active List (%d):\n", ll->length);
     for (ll_cur_head(ll); ll->cursor; ll_cur_next(ll))
-      printf(" - ID: %s\n", ll->cursor->task->id);
+      printf(" - ID: %u\n", (unsigned int)ll->cursor->task->id);
 
     ll = get_overdue_dd_task_list();
     printf("Monitor Overdue List (%d):\n", ll->length);
     for (ll_cur_head(ll); ll->cursor; ll_cur_next(ll))
-      printf(" - ID: %s\n", ll->cursor->task->id);
+      printf(" - ID: %u\n", (unsigned int)ll->cursor->task->id);
 
     ll = get_complete_dd_task_list();
     printf("Monitor Complete List (%d):\n", ll->length);
     for (ll_cur_head(ll); ll->cursor; ll_cur_next(ll))
-      printf(" - ID: %s\n", ll->cursor->task->id);
+      printf(" - ID: %u\n", (unsigned int)ll->cursor->task->id);
 
     vTaskDelay(1000);
   }

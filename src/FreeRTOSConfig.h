@@ -90,11 +90,11 @@ extern uint32_t SystemCoreClock;
 #define configUSE_TICK_HOOK				0
 #define configCPU_CLOCK_HZ				( SystemCoreClock )
 #define configTICK_RATE_HZ				( ( TickType_t ) 1000 )
-#define configMAX_PRIORITIES			( 20 )
+#define configMAX_PRIORITIES			( 10 )
 #define configMINIMAL_STACK_SIZE		( ( unsigned short ) 130 )
 // The STM32 datasheet says Up to 192+4 Kbytes of SRAM including 64-Kbyte of CCM
 // (core coupled memory) data RAM . So I'll alloc 150kb of heap...
-#define configTOTAL_HEAP_SIZE			( ( size_t ) ( 150 * 1024 ) )
+#define configTOTAL_HEAP_SIZE			( ( size_t ) ( 7 * 1024 ) )
 #define configMAX_TASK_NAME_LEN			( 10 )
 #define configUSE_TRACE_FACILITY		0
 #define configUSE_16_BIT_TICKS			0

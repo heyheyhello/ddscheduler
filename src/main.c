@@ -1,6 +1,7 @@
 // Using FreeRTOS v9.0.0
 
 #include "dd_headers.h"
+#include "../FreeRTOS_Source/portable/MemMang/heap_4.c"
 
 static void prvSetupHardware(void);
 
@@ -12,8 +13,8 @@ int main(void) {
 
   xTaskCreate(DD_Scheduler_Task, "DD Scheduler Task", configMINIMAL_STACK_SIZE,
               NULL, DD_PRIORITY_SCHEDULER_TASK, NULL);
-  xTaskCreate(DD_Monitor_Task, "DD Monitor Task", configMINIMAL_STACK_SIZE,
-              NULL, DD_PRIORITY_MONITOR_TASK, NULL);
+//  xTaskCreate(DD_Monitor_Task, "DD Monitor Task", configMINIMAL_STACK_SIZE,
+//              NULL, DD_PRIORITY_MONITOR_TASK, NULL);
 
   xTaskCreate(Periodic_Task_Generator_1, "Periodic_Gen_1",
               configMINIMAL_STACK_SIZE, NULL, DD_PRIORITY_GENERATOR_TASK, NULL);
