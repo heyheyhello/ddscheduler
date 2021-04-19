@@ -47,6 +47,7 @@ void Periodic_Task_1(void *pvParameters) {
     current_tick = xTaskGetTickCount();
     if (current_tick == previous_tick)
       continue;
+    previous_tick = current_tick;
     execution_time--;
   }
   // There's no need to vTaskDelay here. If we're done we're done.
@@ -91,6 +92,7 @@ void Periodic_Task_2(void *pvParameters) {
     current_tick = xTaskGetTickCount();
     if (current_tick == previous_tick)
       continue;
+    previous_tick = current_tick;
     execution_time--;
   }
   // There's no need to vTaskDelay here. If we're done we're done.
@@ -135,6 +137,7 @@ void Periodic_Task_3(void *pvParameters) {
     current_tick = xTaskGetTickCount();
     if (current_tick == previous_tick)
       continue;
+    previous_tick = current_tick;
     execution_time--;
   }
   // There's no need to vTaskDelay here. If we're done we're done.
