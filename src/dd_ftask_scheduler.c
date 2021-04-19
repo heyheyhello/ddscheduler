@@ -61,7 +61,7 @@ void DD_Scheduler_Task(void *pvParameters) {
       vTaskDelete(node_active->task->task_handle);
       ll_cur_head(ll_overdue);
       // Too full? Remove head of list
-      while (ll_overdue->length >= 10) {
+      while (ll_overdue->length >= 5) {
         DD_LL_Node_t *node_overdue = ll_cur_unlink(ll_overdue);
         // Overdue tasks have already had their F-Task cleaned up not D-Task
         vPortFree(node_overdue->task);
@@ -69,7 +69,6 @@ void DD_Scheduler_Task(void *pvParameters) {
       }
       ll_cur_tail(ll_overdue);
       // Move to end of overdue list
-      vTaskDelete(t->task_handle);
       ll_cur_append(ll_overdue, node_active);
     }
     // Memory is shared, don't allocate a new message
@@ -81,16 +80,15 @@ void DD_Scheduler_Task(void *pvParameters) {
     case (DD_API_Req_Task_Create): {
       DD_Task_t *task_ins = (DD_Task_t *)req_message->data;
       DD_LL_Node_t *node = ll_node(task_ins);
-      printf("DDS create %d\n", (int)node->task->id);
       ll_cur_head(ll_active);
-      int prio = ll_active->cursor
+      uint32_t prio = ll_active->cursor
                      ? uxTaskPriorityGet(ll_active->cursor->task->task_handle)
                      : DD_PRIORITY_USER_BASELINE;
       // Consider prepending each item
       for (; ll_active->cursor; ll_cur_next(ll_active)) {
         DD_Task_t *t = ll_active->cursor->task;
         if (task_ins->absolute_deadline >= t->absolute_deadline) {
-          prio--;
+          prio = prio == 0 ? 0 : prio - 1;
           continue;
         }
         // Add the task
@@ -116,10 +114,10 @@ void DD_Scheduler_Task(void *pvParameters) {
       ll_cur_head(ll_active);
       DD_Task_t *t = NULL;
       DD_Task_t *t_removed = NULL;
-      uint32_t top_priority = 0;
+      uint32_t prio = 0;
       if (ll_active->length > 0) {
     	// Otherwise this throws a hard fault on the CPU
-    	top_priority = uxTaskPriorityGet(ll_active->cursor->task->task_handle);
+    	prio = uxTaskPriorityGet(ll_active->cursor->task->task_handle);
       }
       for (; ll_active->cursor; ll_cur_next(ll_active)) {
         t = ll_active->cursor->task;
@@ -131,7 +129,7 @@ void DD_Scheduler_Task(void *pvParameters) {
         DD_LL_Node_t *node_active = ll_cur_unlink(ll_active);
         ll_cur_head(ll_complete);
         // Too full? Remove head of list
-        while (ll_complete->length >= 10) {
+        while (ll_complete->length >= 5) {
           DD_LL_Node_t *node_complete = ll_cur_unlink(ll_complete);
           // Complete tasks have already had their F-Task cleaned up not D-Task
           vPortFree(node_complete->task);
@@ -150,7 +148,8 @@ void DD_Scheduler_Task(void *pvParameters) {
           t = ll_active->cursor->task;
           if (t->id == task_id)
             break;
-          vTaskPrioritySet(t->task_handle, --top_priority);
+          prio = prio == 0 ? 0 : prio - 1;
+          vTaskPrioritySet(t->task_handle, prio);
         }
       } else {
         printf("DDS task not in active list %d\n", (int)task_id);
@@ -228,10 +227,10 @@ void create_dd_task(TaskHandle_t task_handle, DD_Task_Enum_t type, uint32_t id,
   task->completion_time = NULL;
 
   DD_Task_t *ret_task = dd_api_call(DD_API_Req_Task_Create, task);
-  if (task == ret_task)
-    printf("create_dd_task: task release time: %d\n", (int)task->release_time);
-  else
+  // printf("create_dd_task: task release time: %d\n", (int)task->release_time);
+  if (task != ret_task) {
     printf("create_dd_task: task pointer mismatch\n");
+  }
 };
 
 // Don't free the task since it's being used in the complete_list. Memory is
@@ -239,7 +238,7 @@ void create_dd_task(TaskHandle_t task_handle, DD_Task_Enum_t type, uint32_t id,
 void delete_dd_task(uint32_t id) {
   DD_Task_t *task = dd_api_call(DD_API_Req_Task_Delete, id);
   if (task) {
-    printf("delete_dd_task: task completion time: %d\n", (int)task->completion_time);
+    // printf("delete_dd_task: task completion time: %d\n", (int)task->completion_time);
     vTaskDelete(task->task_handle);
   } else {
     printf("delete_dd_task: task not found\n");

@@ -41,8 +41,8 @@ void Periodic_Task_1(void *pvParameters) {
   TickType_t current_tick = xTaskGetTickCount();
   TickType_t previous_tick = 0;
   TickType_t execution_time = TASK_1_EXEC_TIME / portTICK_PERIOD_MS;
-  printf("Task 1 (F-Task Priority: %u; Tick: %u)\n",
-         (unsigned int)uxTaskPriorityGet(NULL), (unsigned int)current_tick);
+//  printf("Task 1 (F-Task Priority: %u; Tick: %u)\n",
+//         (unsigned int)uxTaskPriorityGet(NULL), (unsigned int)current_tick);
   while (execution_time) {
     current_tick = xTaskGetTickCount();
     if (current_tick == previous_tick)
@@ -86,8 +86,8 @@ void Periodic_Task_2(void *pvParameters) {
   TickType_t current_tick = xTaskGetTickCount();
   TickType_t previous_tick = 0;
   TickType_t execution_time = TASK_2_EXEC_TIME / portTICK_PERIOD_MS;
-  printf("Task 2 (F-Task Priority: %u; Tick: %u)\n",
-         (unsigned int)uxTaskPriorityGet(NULL), (unsigned int)current_tick);
+//  printf("Task 2 (F-Task Priority: %u; Tick: %u)\n",
+//         (unsigned int)uxTaskPriorityGet(NULL), (unsigned int)current_tick);
   while (execution_time) {
     current_tick = xTaskGetTickCount();
     if (current_tick == previous_tick)
@@ -131,8 +131,8 @@ void Periodic_Task_3(void *pvParameters) {
   TickType_t current_tick = xTaskGetTickCount();
   TickType_t previous_tick = 0;
   TickType_t execution_time = TASK_3_EXEC_TIME / portTICK_PERIOD_MS;
-  printf("Task 1 (F-Task Priority: %u; Tick: %u)\n",
-         (unsigned int)uxTaskPriorityGet(NULL), (unsigned int)current_tick);
+//  printf("Task 1 (F-Task Priority: %u; Tick: %u)\n",
+//         (unsigned int)uxTaskPriorityGet(NULL), (unsigned int)current_tick);
   while (execution_time) {
     current_tick = xTaskGetTickCount();
     if (current_tick == previous_tick)
