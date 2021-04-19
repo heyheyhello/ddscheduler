@@ -9,6 +9,7 @@ DD_LL_Leader_t *ll_leader() {
   leader->cursor = NULL;
   leader->cursor_prev = NULL;
   leader->length = 0;
+  leader->add_count = 0;
   return leader;
 }
 
@@ -43,6 +44,7 @@ void ll_cur_prepend(DD_LL_Leader_t *leader, DD_LL_Node_t *to_add) {
     to_add->next = NULL;
     leader->head = to_add;
     leader->length = 1;
+    leader->add_count = 1;
     return;
   }
   if (leader->cursor == NULL) {
@@ -60,6 +62,7 @@ void ll_cur_prepend(DD_LL_Leader_t *leader, DD_LL_Node_t *to_add) {
   }
   leader->cursor_prev = to_add;
   leader->length++;
+  leader->add_count++;
 }
 
 void ll_cur_append(DD_LL_Leader_t *leader, DD_LL_Node_t *to_add) {
@@ -68,6 +71,7 @@ void ll_cur_append(DD_LL_Leader_t *leader, DD_LL_Node_t *to_add) {
     to_add->next = NULL;
     leader->head = to_add;
     leader->length = 1;
+    leader->add_count = 1;
     return;
   }
   if (leader->cursor == NULL) {
@@ -77,6 +81,7 @@ void ll_cur_append(DD_LL_Leader_t *leader, DD_LL_Node_t *to_add) {
   to_add->next = leader->cursor->next;
   leader->cursor->next = to_add;
   leader->length++;
+  leader->add_count++;
 }
 
 DD_LL_Node_t *ll_cur_unlink(DD_LL_Leader_t *leader) {

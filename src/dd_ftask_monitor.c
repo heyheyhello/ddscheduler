@@ -11,35 +11,32 @@ void DD_Monitor_Task(void *pvParameters) {
   while (1) {
     printf("## Monitoring (F-Task Priority: %u; Tick: %u)\n",
            (unsigned int)uxTaskPriorityGet(NULL),
-		   (unsigned int)xTaskGetTickCount());
+           (unsigned int)xTaskGetTickCount());
 
     // TODO: Print information on the deadlines, creation times etc.
     ll = get_active_dd_task_list();
-    printf("## Active (%d):\n", ll->length);
+    printf("## Active (%d now):\n", ll->length);
     for (ll_cur_head(ll); ll->cursor; ll_cur_next(ll))
-      printf("## - ID:%d R:%d D:%d C:%d\n",
-        ll->cursor->task->id,
-		ll->cursor->task->release_time,
-		ll->cursor->task->absolute_deadline,
-		ll->cursor->task->completion_time);
+      printf("## - ID:%d R:%d D:%d C:%d\n", ll->cursor->task->id,
+             ll->cursor->task->release_time,
+             ll->cursor->task->absolute_deadline,
+             ll->cursor->task->completion_time);
 
     ll = get_overdue_dd_task_list();
-    printf("## Overdue (%d):\n", ll->length);
+    printf("## Overdue (%d ever):\n", ll->add_count);
     for (ll_cur_head(ll); ll->cursor; ll_cur_next(ll))
-      printf("## - ID:%d R:%d D:%d C:%d\n",
-        ll->cursor->task->id,
-  		ll->cursor->task->release_time,
-  		ll->cursor->task->absolute_deadline,
-  		ll->cursor->task->completion_time);
+      printf("## - ID:%d R:%d D:%d C:%d\n", ll->cursor->task->id,
+             ll->cursor->task->release_time,
+             ll->cursor->task->absolute_deadline,
+             ll->cursor->task->completion_time);
 
     ll = get_complete_dd_task_list();
-    printf("## Complete (%d):\n", ll->length);
+    printf("## Complete (%d ever):\n", ll->add_count);
     for (ll_cur_head(ll); ll->cursor; ll_cur_next(ll))
-      printf("## - ID:%d R:%d D:%d C:%d\n",
-        ll->cursor->task->id,
-  		ll->cursor->task->release_time,
-  		ll->cursor->task->absolute_deadline,
-  		ll->cursor->task->completion_time);
+      printf("## - ID:%d R:%d D:%d C:%d\n", ll->cursor->task->id,
+             ll->cursor->task->release_time,
+             ll->cursor->task->absolute_deadline,
+             ll->cursor->task->completion_time);
 
     vTaskDelay(500);
   }

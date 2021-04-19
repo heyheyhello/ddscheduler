@@ -69,6 +69,7 @@ typedef struct DD_LL_Leader_t {
   DD_LL_Node_t *cursor;
   DD_LL_Node_t *cursor_prev;
   unsigned int length;
+  unsigned int add_count;
 } DD_LL_Leader_t;
 
 DD_LL_Leader_t *ll_leader();
