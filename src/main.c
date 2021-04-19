@@ -1,7 +1,7 @@
 // Using FreeRTOS v9.0.0
 
-#include "dd_headers.h"
 #include "../FreeRTOS_Source/portable/MemMang/heap_4.c"
+#include "dd_headers.h"
 
 static void prvSetupHardware(void);
 
@@ -11,12 +11,17 @@ int main(void) {
 
   prvSetupHardware();
 
-  xTaskCreate(DD_Scheduler_Task, "Scheduler", configMINIMAL_STACK_SIZE,
-              NULL, DD_PRIORITY_SCHEDULER_TASK, NULL);
-  xTaskCreate(DD_Monitor_Task, "Monitor", configMINIMAL_STACK_SIZE,
-              NULL, DD_PRIORITY_MONITOR_TASK, NULL);
-  xTaskCreate(Periodic_Task_Generator_1, "Gen_1",
-              configMINIMAL_STACK_SIZE, NULL, DD_PRIORITY_GENERATOR_TASK, NULL);
+  xTaskCreate(DD_Scheduler_Task, "Scheduler", configMINIMAL_STACK_SIZE, NULL,
+              DD_PRIORITY_SCHEDULER_TASK, NULL);
+  xTaskCreate(DD_Monitor_Task, "Monitor", configMINIMAL_STACK_SIZE, NULL,
+              DD_PRIORITY_MONITOR_TASK, NULL);
+
+  xTaskCreate(Periodic_Task_Generator_1, "Gen_1", configMINIMAL_STACK_SIZE,
+              NULL, DD_PRIORITY_GENERATOR_TASK, NULL);
+  xTaskCreate(Periodic_Task_Generator_2, "Gen_2", configMINIMAL_STACK_SIZE,
+              NULL, DD_PRIORITY_GENERATOR_TASK, NULL);
+  xTaskCreate(Periodic_Task_Generator_3, "Gen_3", configMINIMAL_STACK_SIZE,
+              NULL, DD_PRIORITY_GENERATOR_TASK, NULL);
 
   vTaskStartScheduler();
   return 0;
